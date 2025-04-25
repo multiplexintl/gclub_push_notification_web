@@ -1,23 +1,23 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gclub_push_notification_web/model/audience/audience.dart';
+import 'package:gclub_push_notification_web/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:html' as html;
-import 'package:get_storage/get_storage.dart';
 import '../model/audience/segment.dart';
 import '../services/onesignal_service.dart';
 
 enum PlatformTarget { ios, android, both }
 
 class NotificationController extends GetxController {
-  final GetStorage _storage = GetStorage();
-  final _secureStorage = FlutterSecureStorage();
-
+  // final GetStorage _storage = GetStorage();
+  // final _secureStorage = FlutterSecureStorage();
+  final version = ''.obs;
   // Form fields
-  final title = 'Test'.obs;
-  final content = 'Test from Web'.obs;
+  final title = ''.obs;
+  final content = ''.obs;
   final imageUrl = Rxn<String>();
   final platform = PlatformTarget.both.obs;
   // final audience = AudienceTarget.testers.obs;
@@ -32,7 +32,9 @@ class NotificationController extends GetxController {
 
   // API Credentials
   final appId = ''.obs;
+  final TextEditingController appIdController = TextEditingController();
   final restApiKey = ''.obs;
+  final TextEditingController apiKeyController = TextEditingController();
   final obscureKey = true.obs;
 
   // Form key
@@ -40,9 +42,20 @@ class NotificationController extends GetxController {
   final formKeyForContents = GlobalKey<FormState>();
 
   @override
-  void onInit() {
+  void onInit() async {
     super.onInit();
-    loadCredentials();
+    await _getAppVersion();
+    await loadCredentials();
+  }
+
+  Future<void> _getAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      version.value = 'v${packageInfo.version}';
+    } catch (e) {
+      version.value = 'Unknown';
+      log('Error getting app version: $e');
+    }
   }
 
   void saveCredentials() {
@@ -58,28 +71,22 @@ class NotificationController extends GetxController {
       log('Saved credentials to localStorage:');
       log('App ID: ${localStorage['onesignal_app_id']}');
       log('REST API Key: ${localStorage['onesignal_rest_api_key']}');
-
-      Get.snackbar(
-        'Success',
-        'API credentials saved',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.1),
-        colorText: Colors.green,
-        duration: const Duration(seconds: 2),
+      CustomSnackbar.show(
+        title: 'Success',
+        message: 'API credentials saved',
+        backgroundColor: Colors.green,
       );
     } catch (e) {
       log('Error saving credentials: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to save credentials: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red,
+      CustomSnackbar.show(
+        title: 'Error',
+        message: 'Failed to save credentials: $e',
+        backgroundColor: Colors.red,
       );
     }
   }
 
-  void loadCredentials() {
+  Future<void> loadCredentials() async {
     log('Attempting to load credentials...');
     try {
       // Directly use localStorage
@@ -102,10 +109,12 @@ class NotificationController extends GetxController {
       // Update the controller values if found
       if (savedAppId != null && savedAppId.isNotEmpty) {
         appId.value = savedAppId;
+        appIdController.text = savedAppId;
       }
 
       if (savedRestApiKey != null && savedRestApiKey.isNotEmpty) {
         restApiKey.value = savedRestApiKey;
+        apiKeyController.text = savedRestApiKey;
       }
 
       // Only show notification if both values are loaded
@@ -114,13 +123,10 @@ class NotificationController extends GetxController {
           savedRestApiKey != null &&
           savedRestApiKey.isNotEmpty) {
         log('Credentials loaded successfully');
-        Get.snackbar(
-          'Success',
-          'API credentials loaded',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.1),
-          colorText: Colors.green,
-          duration: const Duration(seconds: 2),
+        CustomSnackbar.show(
+          title: 'Success',
+          message: 'API credentials loaded',
+          backgroundColor: Colors.green,
         );
       } else {
         log('No credentials found in localStorage');
@@ -129,64 +135,6 @@ class NotificationController extends GetxController {
       log('Error loading credentials: $e');
     }
   }
-
-  // void loadCredentials() async {
-  //   try {
-  //     // Try to load from secure storage first
-  //     final savedAppId = await _secureStorage.read(key: 'onesignal_app_id');
-  //     final savedRestApiKey =
-  //         await _secureStorage.read(key: 'onesignal_rest_api_key');
-  //     log(savedAppId.toString());
-
-  //     // If secure storage failed, try regular storage
-  //     if (savedAppId == null || savedRestApiKey == null) {
-  //       final regularAppId = _storage.read('onesignal_app_id');
-  //       final regularRestApiKey = _storage.read('onesignal_rest_api_key');
-
-  //       if (regularAppId != null) appId.value = regularAppId;
-  //       if (regularRestApiKey != null) restApiKey.value = regularRestApiKey;
-  //     } else {
-  //       appId.value = savedAppId;
-  //       restApiKey.value = savedRestApiKey;
-  //     }
-  //   } catch (e) {
-  //     log('Error loading credentials: $e');
-  //   }
-  // }
-
-  // void saveCredentials() async {
-  //   try {
-  //     // Try to save to secure storage
-  //     await _secureStorage.write(key: 'onesignal_app_id', value: appId.value);
-  //     await _secureStorage.write(
-  //         key: 'onesignal_rest_api_key', value: restApiKey.value);
-
-  //     // Also save to regular storage as fallback
-  //     _storage.write('onesignal_app_id', appId.value);
-  //     _storage.write('onesignal_rest_api_key', restApiKey.value);
-
-  //     Get.snackbar(
-  //       'Success',
-  //       'API credentials saved securely',
-  //       snackPosition: SnackPosition.TOP,
-  //       backgroundColor: Colors.green.withOpacity(0.1),
-  //       colorText: Colors.green,
-  //       duration: const Duration(seconds: 2),
-  //     );
-  //   } catch (e) {
-  //     // If secure storage fails, fall back to regular storage
-  //     _storage.write('onesignal_app_id', appId.value);
-  //     _storage.write('onesignal_rest_api_key', restApiKey.value);
-
-  //     Get.snackbar(
-  //       'Note',
-  //       'API credentials saved (non-secure mode)',
-  //       snackPosition: SnackPosition.TOP,
-  //       backgroundColor: Colors.orange.withOpacity(0.1),
-  //       colorText: Colors.orange[800],
-  //     );
-  //   }
-  // }
 
   void toggleObscureKey() {
     obscureKey.value = !obscureKey.value;
@@ -225,6 +173,11 @@ class NotificationController extends GetxController {
     if (appId.value.isEmpty || restApiKey.value.isEmpty) {
       errorMessage.value =
           'OneSignal API credentials are required to fetch segments';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'OneSignal API credentials are required to fetch segments',
+          backgroundColor: Colors.red);
+
       return;
     }
 
@@ -244,9 +197,17 @@ class NotificationController extends GetxController {
         }
       } else {
         errorMessage.value = 'Failed to fetch segments: ${result['message']}';
+        CustomSnackbar.show(
+            title: "Error!!",
+            message: 'Failed to fetch segments: ${result['message']}',
+            backgroundColor: Colors.red);
       }
     } catch (e) {
       errorMessage.value = 'Error fetching segments: ${e.toString()}';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'Error fetching segments: ${e.toString()}',
+          backgroundColor: Colors.red);
     } finally {
       isLoadingSegments.value = false;
     }
@@ -255,19 +216,31 @@ class NotificationController extends GetxController {
   Future<bool> sendNotification() async {
     if (title.value.isEmpty || content.value.isEmpty) {
       errorMessage.value = 'Title and content are required';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'Title and content are required',
+          backgroundColor: Colors.red);
       return false;
     }
 
     if (appId.value.isEmpty || restApiKey.value.isEmpty) {
       errorMessage.value = 'OneSignal API credentials are required';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'OneSignal API credentials are required',
+          backgroundColor: Colors.red);
       return false;
     }
 
     // Check if a segment is selected
-    // if (selectedSegmentIds.isEmpty) {
-    //   errorMessage.value = 'Please select a specific segment';
-    //   return false;
-    // }
+    if (selectedSegmentIds.isEmpty) {
+      errorMessage.value = 'Please select a specific segment';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'Please select a specific segment',
+          backgroundColor: Colors.red);
+      return false;
+    }
 
     isSending.value = true;
     clearMessages();
@@ -288,15 +261,27 @@ class NotificationController extends GetxController {
 
       if (result['success']) {
         successMessage.value = 'Notification sent successfully!';
-        // resetForm();
+        CustomSnackbar.show(
+            title: "Success!!",
+            message: 'Notification sent successfully!',
+            backgroundColor: Colors.green);
+        resetForm();
       } else {
         errorMessage.value = 'Failed to send: ${result['message']}';
+        CustomSnackbar.show(
+            title: "Error!!",
+            message: 'Failed to send: ${result['message']}',
+            backgroundColor: Colors.red);
       }
 
       return result['success'] ?? false;
     } catch (e) {
       isSending.value = false;
       errorMessage.value = 'Error: ${e.toString()}';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'Error: ${e.toString()}',
+          backgroundColor: Colors.red);
       return false;
     }
   }
@@ -305,11 +290,21 @@ class NotificationController extends GetxController {
   void sendTestNotification() async {
     if (title.value.isEmpty || content.value.isEmpty) {
       errorMessage.value = 'Title and content are required';
+
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'Title and content are required',
+          backgroundColor: Colors.red);
       return;
     }
 
     if (appId.value.isEmpty || restApiKey.value.isEmpty) {
       errorMessage.value = 'OneSignal API credentials are required';
+
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'OneSignal API credentials are required',
+          backgroundColor: Colors.red);
       return;
     }
 
@@ -332,14 +327,26 @@ class NotificationController extends GetxController {
 
       if (result['success']) {
         successMessage.value = 'Test notification sent successfully!';
+        CustomSnackbar.show(
+            title: "Success!!",
+            message: 'Test notification sent successfully!',
+            backgroundColor: Colors.red);
       } else {
         errorMessage.value = 'Failed to send test: ${result['message']}';
+        CustomSnackbar.show(
+            title: "Error!!",
+            message: 'Failed to send test: ${result['message']}',
+            backgroundColor: Colors.red);
       }
 
       return;
     } catch (e) {
       isSending.value = false;
       errorMessage.value = 'Error: ${e.toString()}';
+      CustomSnackbar.show(
+          title: "Error!!",
+          message: 'Error: ${e.toString()}',
+          backgroundColor: Colors.red);
       return;
     }
   }

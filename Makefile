@@ -1,8 +1,8 @@
 # Makefile for deploying Flutter web app to GitHub Pages
 
 # Update These Variables
-BASE_HREF = '/gclub-push-notification/'
-GITHUB_REPO = https://github.com/multiplexintl/price-label-maker.git
+BASE_HREF = '/push-notification-gclub/'
+GITHUB_REPO = https://github.com/multiplexintl/push-notification-gclub
 BUILD_VERSION := $(shell grep 'version:' pubspec.yaml | awk '{print $$2}')
 
 deploy-web:
@@ -21,7 +21,7 @@ deploy-web:
 	git add . && \
 	git commit -m "Deploy Version $(BUILD_VERSION)" && \
 	git branch -M main && \
-	git remote set-url origin $(GITHUB_REPO) && \
+	git remote add origin $(GITHUB_REPO) && \
 	git push -u --force origin main
 
 	cd ../..

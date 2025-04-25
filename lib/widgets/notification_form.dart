@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import 'package:image_picker_web/image_picker_web.dart';
 import '../controllers/notification_controller.dart';
+import 'custom_snackbar.dart';
 
 class NotificationForm extends StatelessWidget {
   const NotificationForm({super.key});
@@ -107,61 +108,63 @@ class NotificationForm extends StatelessWidget {
             const SizedBox(height: 16),
 
             // API Credentials
-            Obx(() => TextFormField(
-                  initialValue: controller.appId.value,
-                  decoration: InputDecoration(
-                    labelText: 'OneSignal App ID',
-                    hintText: 'Enter your OneSignal App ID',
-                    labelStyle: TextStyle(
-                      color: Colors.black,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.app_registration,
-                      color: Colors.black,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'App ID is required';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) => controller.appId.value = value,
-                )),
+            TextFormField(
+              // initialValue: controller.appId.value,
+              controller: controller.appIdController,
+              decoration: InputDecoration(
+                labelText: 'OneSignal App ID',
+                hintText: 'Enter your OneSignal App ID',
+                labelStyle: TextStyle(
+                  color: Colors.black,
+                ),
+                prefixIcon: const Icon(
+                  Icons.app_registration,
+                  color: Colors.black,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'App ID is required';
+                }
+                return null;
+              },
+              onChanged: (value) => controller.appId.value = value,
+            ),
             const SizedBox(height: 16),
 
-            Obx(() => TextFormField(
-                  initialValue: controller.restApiKey.value,
-                  obscureText: controller.obscureKey.value,
-                  decoration: InputDecoration(
-                    labelText: 'REST API Key',
-                    hintText: 'Enter your OneSignal REST API Key',
-                    prefixIcon: const Icon(Icons.key),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    suffixIcon: IconButton(
-                      icon: Icon(controller.obscureKey.value
-                          ? Icons.visibility
-                          : Icons.visibility_off),
-                      onPressed: () => controller.toggleObscureKey(),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'REST API Key is required';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) => controller.restApiKey.value = value,
-                )),
+            TextFormField(
+              // initialValue: controller.restApiKey.value,
+              controller: controller.apiKeyController,
+              obscureText: controller.obscureKey.value,
+              decoration: InputDecoration(
+                labelText: 'REST API Key',
+                hintText: 'Enter your OneSignal REST API Key',
+                prefixIcon: const Icon(Icons.key),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                suffixIcon: IconButton(
+                  icon: Icon(controller.obscureKey.value
+                      ? Icons.visibility
+                      : Icons.visibility_off),
+                  onPressed: () => controller.toggleObscureKey(),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'REST API Key is required';
+                }
+                return null;
+              },
+              onChanged: (value) => controller.restApiKey.value = value,
+            ),
             const SizedBox(height: 16),
 
             Column(
@@ -515,12 +518,10 @@ class NotificationForm extends StatelessWidget {
                             controller.setImageUrl(imageData);
                           }
                         } catch (e) {
-                          Get.snackbar(
-                            'Error',
-                            'Failed to pick image: $e',
-                            snackPosition: SnackPosition.TOP,
-                            backgroundColor: Colors.red.withOpacity(0.1),
-                            colorText: Colors.red,
+                          CustomSnackbar.show(
+                            title: 'Error',
+                            message: 'Failed to pick image: $e',
+                            backgroundColor: Colors.red,
                           );
                         }
                       },
@@ -719,12 +720,11 @@ class NotificationForm extends StatelessWidget {
                         if (controller.formKeyForContents.currentState!
                             .validate()) {
                           if (controller.selectedSegmentIds.isEmpty) {
-                            Get.snackbar(
-                              'Warning',
-                              'No segments selected. Please select at least one segment.',
-                              snackPosition: SnackPosition.TOP,
-                              backgroundColor: Colors.orange.withOpacity(0.1),
-                              colorText: Colors.orange[800],
+                            CustomSnackbar.show(
+                              title: 'Warning',
+                              message:
+                                  'No segments selected. Please select at least one segment.',
+                              backgroundColor: Colors.orange,
                             );
                             return;
                           }
@@ -954,7 +954,9 @@ class NotificationForm extends StatelessWidget {
                 Icons.science,
                 color: Colors.white,
               ),
-              label: const Text('Send to Test Users Only'),
+              label: Text(controller.isSending.value
+                  ? 'Sending...'
+                  : 'Send to Test Users Only'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade700,
                 foregroundColor: Colors.white,
@@ -1012,7 +1014,7 @@ class NotificationForm extends StatelessWidget {
                           child: const Text('Send Test'),
                           onPressed: () {
                             Get.back();
-                            // TODO: Implement send to test users functionality
+
                             controller.sendTestNotification();
                           },
                         ),
