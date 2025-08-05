@@ -64,8 +64,12 @@ class OneSignalService {
         'appId': appId,
         'restApiKey': restApiKey,
         'notificationData': {
+          // Original text with emojis for OneSignal (OneSignal supports emojis)
           'title': notificationData['title'],
           'content': notificationData['content'],
+          // Encoded versions for your database storage
+          'titleEncoded': notificationData['titleEncoded'],
+          'contentEncoded': notificationData['contentEncoded'],
           'imageUrl': notificationData['imageUrl'],
           'platform': platformString,
           'audienceSegmentId': notificationData['audienceSegmentId'],
@@ -77,6 +81,9 @@ class OneSignalService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(proxyPayload),
       );
+
+      log('Request payload: ${jsonEncode(proxyPayload)}');
+      log('Response: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final responseData = jsonDecode(response.body);

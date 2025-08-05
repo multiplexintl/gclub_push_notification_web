@@ -1,0 +1,24 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.8'
+          channel: 'stable'
+
+      - name: Deploy using Makefile
+        run: make deploy-web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,7 +1,8 @@
 import 'dart:developer';
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gclub_push_notification_web/model/audience/audience.dart';
+import 'package:gclub_push_notification_web/services/api_service.dart';
 import 'package:gclub_push_notification_web/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -12,16 +13,13 @@ import '../services/onesignal_service.dart';
 enum PlatformTarget { ios, android, both }
 
 class NotificationController extends GetxController {
-  // final GetStorage _storage = GetStorage();
-  // final _secureStorage = FlutterSecureStorage();
   final version = ''.obs;
+
   // Form fields
   final title = ''.obs;
   final content = ''.obs;
   final imageUrl = Rxn<String>();
   final platform = PlatformTarget.both.obs;
-  // final audience = AudienceTarget.testers.obs;
-  // final audienceSegmentId = Rxn<String>();
   final isSending = false.obs;
   final isLoadingSegments = false.obs;
   final errorMessage = Rxn<String>();
@@ -29,6 +27,10 @@ class NotificationController extends GetxController {
   final audience = Rxn<Audience>();
   final selectedSegmentIds = <String>[].obs;
   final segments = <Segment>[].obs;
+
+  // Text controllers for form fields
+  final titleController = TextEditingController();
+  final contentController = TextEditingController();
 
   // API Credentials
   final appId = ''.obs;
@@ -44,8 +46,43 @@ class NotificationController extends GetxController {
   @override
   void onInit() async {
     super.onInit();
+
+    // Listen to text changes
+    titleController.addListener(() {
+      title.value = titleController.text;
+    });
+
+    contentController.addListener(() {
+      content.value = contentController.text;
+    });
+
     await _getAppVersion();
     await loadCredentials();
+  }
+
+  @override
+  void onClose() {
+    titleController.dispose();
+    contentController.dispose();
+    super.onClose();
+  }
+
+  // Base64 encoding/decoding functions for all languages and emojis
+  String encodeTextForDatabase(String text) {
+    // Use base64 encoding - works with Arabic, emojis, and all languages
+    final List<int> bytes = utf8.encode(text);
+    return base64Encode(bytes);
+  }
+
+  String decodeTextFromDatabase(String encodedText) {
+    // Decode base64 back to original text
+    try {
+      final List<int> bytes = base64Decode(encodedText);
+      return utf8.decode(bytes);
+    } catch (e) {
+      log('Error decoding text: $e');
+      return encodedText; // Return as-is if decoding fails
+    }
   }
 
   Future<void> _getAppVersion() async {
@@ -60,14 +97,10 @@ class NotificationController extends GetxController {
 
   void saveCredentials() {
     try {
-      // Directly use localStorage
       final localStorage = html.window.localStorage;
-
-      // Save the credentials
       localStorage['onesignal_app_id'] = appId.value;
       localStorage['onesignal_rest_api_key'] = restApiKey.value;
 
-      // Verify they were saved
       log('Saved credentials to localStorage:');
       log('App ID: ${localStorage['onesignal_app_id']}');
       log('REST API Key: ${localStorage['onesignal_rest_api_key']}');
@@ -89,24 +122,11 @@ class NotificationController extends GetxController {
   Future<void> loadCredentials() async {
     log('Attempting to load credentials...');
     try {
-      // Directly use localStorage
       final localStorage = html.window.localStorage;
 
-      // Print all keys in localStorage for debugging
-      log('All localStorage keys:');
-      localStorage.forEach((key, value) {
-        log('$key: $value');
-      });
-
-      // Get the saved credentials
       final savedAppId = localStorage['onesignal_app_id'];
       final savedRestApiKey = localStorage['onesignal_rest_api_key'];
 
-      log('Retrieved from localStorage:');
-      log('App ID: $savedAppId');
-      log('REST API Key: $savedRestApiKey');
-
-      // Update the controller values if found
       if (savedAppId != null && savedAppId.isNotEmpty) {
         appId.value = savedAppId;
         appIdController.text = savedAppId;
@@ -117,7 +137,6 @@ class NotificationController extends GetxController {
         apiKeyController.text = savedRestApiKey;
       }
 
-      // Only show notification if both values are loaded
       if (savedAppId != null &&
           savedAppId.isNotEmpty &&
           savedRestApiKey != null &&
@@ -128,8 +147,6 @@ class NotificationController extends GetxController {
           message: 'API credentials loaded',
           backgroundColor: Colors.green,
         );
-      } else {
-        log('No credentials found in localStorage');
       }
     } catch (e) {
       log('Error loading credentials: $e');
@@ -142,10 +159,12 @@ class NotificationController extends GetxController {
 
   void setTitle(String value) {
     title.value = value;
+    titleController.text = value;
   }
 
   void setContent(String value) {
     content.value = value;
+    contentController.text = value;
   }
 
   void setImageUrl(String? value) {
@@ -169,6 +188,36 @@ class NotificationController extends GetxController {
     }
   }
 
+  // Load notification data from database (with emoji decoding)
+  void loadNotificationFromDatabase(Map<String, dynamic> notificationData) {
+    // Decode emojis when loading from database
+    final decodedTitle =
+        decodeTextFromDatabase(notificationData['title'] ?? '');
+    final decodedContent =
+        decodeTextFromDatabase(notificationData['content'] ?? '');
+
+    setTitle(decodedTitle);
+    setContent(decodedContent);
+
+    if (notificationData['imageUrl'] != null) {
+      setImageUrl(notificationData['imageUrl']);
+    }
+
+    // Set platform if provided
+    if (notificationData['platform'] != null) {
+      switch (notificationData['platform'].toString().toLowerCase()) {
+        case 'ios':
+          setPlatform(PlatformTarget.ios);
+          break;
+        case 'android':
+          setPlatform(PlatformTarget.android);
+          break;
+        default:
+          setPlatform(PlatformTarget.both);
+      }
+    }
+  }
+
   Future<void> fetchSegments() async {
     if (appId.value.isEmpty || restApiKey.value.isEmpty) {
       errorMessage.value =
@@ -177,7 +226,6 @@ class NotificationController extends GetxController {
           title: "Error!!",
           message: 'OneSignal API credentials are required to fetch segments',
           backgroundColor: Colors.red);
-
       return;
     }
 
@@ -232,7 +280,6 @@ class NotificationController extends GetxController {
       return false;
     }
 
-    // Check if a segment is selected
     if (selectedSegmentIds.isEmpty) {
       errorMessage.value = 'Please select a specific segment';
       CustomSnackbar.show(
@@ -249,13 +296,18 @@ class NotificationController extends GetxController {
       final service = OneSignalService(appId.value, restApiKey.value);
 
       final Map<String, dynamic> notificationData = {
+        // Original text with emojis for OneSignal (OneSignal supports emojis)
         'title': title.value,
         'content': content.value,
+        // Encoded text for database storage
+        // 'titleEncoded': encodeTextForDatabase(title.value),
+        // 'contentEncoded': encodeTextForDatabase(content.value),
         'imageUrl': imageUrl.value,
         'platform': platform.value,
         'audienceSegmentId': selectedSegmentIds,
       };
-      log(notificationData.toString());
+
+      log('Notification data: $notificationData');
       final result = await service.sendNotification(notificationData);
       isSending.value = false;
 
@@ -265,6 +317,7 @@ class NotificationController extends GetxController {
             title: "Success!!",
             message: 'Notification sent successfully!',
             backgroundColor: Colors.green);
+        sendToAPI(isTestNotification: false);
         resetForm();
       } else {
         errorMessage.value = 'Failed to send: ${result['message']}';
@@ -286,11 +339,9 @@ class NotificationController extends GetxController {
     }
   }
 
-  // Add this to your NotificationController class
   void sendTestNotification() async {
     if (title.value.isEmpty || content.value.isEmpty) {
       errorMessage.value = 'Title and content are required';
-
       CustomSnackbar.show(
           title: "Error!!",
           message: 'Title and content are required',
@@ -300,7 +351,6 @@ class NotificationController extends GetxController {
 
     if (appId.value.isEmpty || restApiKey.value.isEmpty) {
       errorMessage.value = 'OneSignal API credentials are required';
-
       CustomSnackbar.show(
           title: "Error!!",
           message: 'OneSignal API credentials are required',
@@ -319,7 +369,7 @@ class NotificationController extends GetxController {
         'content': content.value,
         'imageUrl': imageUrl.value,
         'platform': platform.value,
-        'audienceSegmentId': ['Test Users'], // Force to test users only
+        'audienceSegmentId': ['Test Users'],
       };
 
       final result = await service.sendNotification(notificationData);
@@ -330,7 +380,8 @@ class NotificationController extends GetxController {
         CustomSnackbar.show(
             title: "Success!!",
             message: 'Test notification sent successfully!',
-            backgroundColor: Colors.red);
+            backgroundColor: Colors.green);
+        sendToAPI(isTestNotification: true);
       } else {
         errorMessage.value = 'Failed to send test: ${result['message']}';
         CustomSnackbar.show(
@@ -338,8 +389,6 @@ class NotificationController extends GetxController {
             message: 'Failed to send test: ${result['message']}',
             backgroundColor: Colors.red);
       }
-
-      return;
     } catch (e) {
       isSending.value = false;
       errorMessage.value = 'Error: ${e.toString()}';
@@ -347,21 +396,37 @@ class NotificationController extends GetxController {
           title: "Error!!",
           message: 'Error: ${e.toString()}',
           backgroundColor: Colors.red);
-      return;
+    }
+  }
+
+  Future<void> sendToAPI({required bool isTestNotification}) async {
+    try {
+      if (title.value.isEmpty || content.value.isEmpty) {}
+      final Map<String, dynamic> notificationData = {
+        'Title': encodeTextForDatabase(title.value),
+        'Description': encodeTextForDatabase(content.value),
+        'Images': "${imageUrl.value}",
+      };
+      log(json.encode(notificationData));
+      final service = ApiService();
+      final result = await service.sendNotificationToApi(notificationData);
+      if (result['success']) {
+        successMessage.value = 'Notification saved successfully!';
+      } else {
+        errorMessage.value = 'Failed to save: ${result['message']}';
+      }
+    } catch (e) {
+      log(e.toString());
     }
   }
 
   void resetForm() {
     title.value = '';
     content.value = '';
+    titleController.clear();
+    contentController.clear();
     imageUrl.value = null;
     platform.value = PlatformTarget.both;
-    // audience.value = AudienceTarget.testers;
     clearMessages();
   }
 }
-
- 
-// App ID: edb2b960-fcf2-499d-9eb0-72c3ec87c05b
-
-// API Key: os_v2_app_5wzlsyh46jez3hvqolb6zb6alphp53qiyatene5qadfo4bznsemp5fzuikw4preljjzru44t4a2rjpuvj4xoblbnq267xdpgcoomucq

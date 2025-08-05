@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import 'package:image_picker_web/image_picker_web.dart';
 import '../controllers/notification_controller.dart';
+import '../utils/image_utils.dart';
 import 'custom_snackbar.dart';
 
 class NotificationForm extends StatelessWidget {
@@ -37,7 +38,7 @@ class NotificationForm extends StatelessWidget {
 
                     const Divider(height: 32),
 
-                    // Notification Content
+                    // Notification Content with Emoji Support
                     _buildNotificationContentSection(controller),
 
                     const SizedBox(height: 24),
@@ -106,24 +107,16 @@ class NotificationForm extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-
-            // API Credentials
             TextFormField(
-              // initialValue: controller.appId.value,
               controller: controller.appIdController,
               decoration: InputDecoration(
                 labelText: 'OneSignal App ID',
                 hintText: 'Enter your OneSignal App ID',
-                labelStyle: TextStyle(
-                  color: Colors.black,
-                ),
-                prefixIcon: const Icon(
-                  Icons.app_registration,
-                  color: Colors.black,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                labelStyle: TextStyle(color: Colors.black),
+                prefixIcon:
+                    const Icon(Icons.app_registration, color: Colors.black),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 filled: true,
                 fillColor: Colors.white,
               ),
@@ -136,18 +129,15 @@ class NotificationForm extends StatelessWidget {
               onChanged: (value) => controller.appId.value = value,
             ),
             const SizedBox(height: 16),
-
             TextFormField(
-              // initialValue: controller.restApiKey.value,
               controller: controller.apiKeyController,
               obscureText: controller.obscureKey.value,
               decoration: InputDecoration(
                 labelText: 'REST API Key',
                 hintText: 'Enter your OneSignal REST API Key',
                 prefixIcon: const Icon(Icons.key),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 filled: true,
                 fillColor: Colors.grey.shade50,
                 suffixIcon: IconButton(
@@ -166,7 +156,6 @@ class NotificationForm extends StatelessWidget {
               onChanged: (value) => controller.restApiKey.value = value,
             ),
             const SizedBox(height: 16),
-
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -192,9 +181,7 @@ class NotificationForm extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
                   ),
-                  onPressed: () {
-                    controller.loadCredentials();
-                  },
+                  onPressed: () => controller.loadCredentials(),
                 ),
               ],
             ),
@@ -261,7 +248,7 @@ class NotificationForm extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Audience Selection
+          // Audience Selection (keeping your existing implementation)
           const Text(
             'Target Audience:',
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -284,7 +271,6 @@ class NotificationForm extends StatelessWidget {
                     : () => controller.fetchSegments(),
               );
             } else {
-              // Show segments with checkboxes
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -429,55 +415,83 @@ class NotificationForm extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Title
-            Obx(() => TextFormField(
-                  initialValue: controller.title.value,
-                  decoration: InputDecoration(
-                    labelText: 'Notification Title',
-                    hintText: 'Enter notification title',
-                    prefixIcon: const Icon(Icons.title),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+            // Title with Emoji Support
+            const Text(
+              'Notification Title:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controller.titleController,
+                    textDirection:
+                        TextDirection.ltr, // Auto-detects RTL for Arabic
+                    decoration: InputDecoration(
+                      labelText: 'Title with emojis & Arabic',
+                      hintText: 'Enter notification title 😀 مرحبا',
+                      prefixIcon: const Icon(Icons.title),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
                     ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Title is required';
+                      }
+                      return null;
+                    },
+                    maxLines: 2,
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Title is required';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) => controller.setTitle(value),
-                )),
+                ),
+              ],
+            ),
+
             const SizedBox(height: 16),
 
-            // Content
-            Obx(() => TextFormField(
-                  initialValue: controller.content.value,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: 'Notification Content',
-                    hintText: 'Enter notification message',
-                    prefixIcon: const Icon(Icons.message),
-                    alignLabelWithHint: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+            // Content with Emoji Support
+            const Text(
+              'Notification Content:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controller.contentController,
+                    maxLines: 4,
+                    textDirection:
+                        TextDirection.ltr, // Auto-detects RTL for Arabic
+                    decoration: InputDecoration(
+                      labelText: 'Content with emojis & Arabic',
+                      hintText: 'Enter notification message 🎉 أهلاً وسهلاً',
+                      prefixIcon: const Icon(Icons.message),
+                      alignLabelWithHint: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
                     ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Content is required';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Content is required';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) => controller.setContent(value),
-                )),
+                ),
+              ],
+            ),
+
             const SizedBox(height: 16),
 
-            // Image Selection
+            // Image Selection (keeping your existing implementation)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -525,6 +539,31 @@ class NotificationForm extends StatelessWidget {
                           );
                         }
                       },
+                      // onPressed: () async {
+                      //   try {
+                      //     final media = await ImagePickerWeb.getImageInfo;
+                      //     if (media?.data != null) {
+                      //       final encodedImage = ImageUtils.encodeImageToBase64(
+                      //           media!.data!,
+                      //           fileName: media.fileName);
+
+                      //       if (encodedImage != null) {
+                      //         controller.setImageUrl(encodedImage);
+                      //       } else {
+                      //         // Handle encoding failure
+                      //         CustomSnackbar.show(
+                      //             title: 'Error',
+                      //             message: 'Failed to process image');
+                      //       }
+                      //     }
+                      //   } catch (e) {
+                      //     CustomSnackbar.show(
+                      //       title: 'Error',
+                      //       message: 'Failed to pick image: $e',
+                      //       backgroundColor: Colors.red,
+                      //     );
+                      //   }
+                      // },
                     ),
                     const SizedBox(width: 12),
                     Obx(() => controller.imageUrl.value != null
@@ -544,11 +583,10 @@ class NotificationForm extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Image Preview
+                // Image Preview (keeping your existing implementation)
                 Obx(() {
                   if (controller.imageUrl.value != null) {
                     try {
-                      // Extract base64 data from format data:image/type;base64,DATA
                       final dataUri = controller.imageUrl.value!;
                       final base64String = dataUri.split(',')[1];
                       final imageBytes = base64Decode(base64String);
@@ -770,7 +808,6 @@ class NotificationForm extends StatelessWidget {
 
   Widget _buildNotificationPreview(NotificationController controller) {
     return Obx(() {
-      // Create a mock notification card
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -830,14 +867,12 @@ class NotificationForm extends StatelessWidget {
               Builder(
                 builder: (context) {
                   try {
-                    // Handle data URI format (data:image/jpeg;base64,/9j/4AAQ...)
                     final dataUri = controller.imageUrl.value!;
                     if (dataUri.startsWith('data:image')) {
-                      // Split the data URI to get the base64 content
                       final base64String = dataUri.split(',')[1];
                       final imageBytes = base64Decode(base64String);
 
-                      return Container(
+                      return SizedBox(
                         width: double.infinity,
                         height: 120,
                         child: Image.memory(
@@ -860,7 +895,6 @@ class NotificationForm extends StatelessWidget {
                         ),
                       );
                     } else {
-                      // Handle non-data URI format
                       return Container(
                         width: double.infinity,
                         height: 80,
@@ -875,7 +909,6 @@ class NotificationForm extends StatelessWidget {
                       );
                     }
                   } catch (e) {
-                    // Handle parsing errors
                     return Container(
                       width: double.infinity,
                       height: 80,
@@ -892,7 +925,7 @@ class NotificationForm extends StatelessWidget {
                 },
               ),
 
-            // Title and content
+            // Title and content with emojis
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -950,10 +983,7 @@ class NotificationForm extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              icon: const Icon(
-                Icons.science,
-                color: Colors.white,
-              ),
+              icon: const Icon(Icons.science, color: Colors.white),
               label: Text(controller.isSending.value
                   ? 'Sending...'
                   : 'Send to Test Users Only'),
@@ -1014,7 +1044,6 @@ class NotificationForm extends StatelessWidget {
                           child: const Text('Send Test'),
                           onPressed: () {
                             Get.back();
-
                             controller.sendTestNotification();
                           },
                         ),
