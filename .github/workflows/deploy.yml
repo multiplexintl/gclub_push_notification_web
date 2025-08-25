@@ -23,7 +23,16 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
 
-      - name: Deploy using Makefile
-        run: make deploy-web
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --base-href '/push-notification-gclub/' --release
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.PAGES_TOKEN }}
+          external_repository: multiplexintl/push-notification-gclub
+          publish_dir: build/web
+          force_orphan: true
